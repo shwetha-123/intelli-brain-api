@@ -1,115 +1,81 @@
-const express=require('express');
-const bodyParser=require('body-parser');
-const bcrypt=require('bcrypt-nodejs');
-const cors=require('cors');
-const app=express();
-app.use(bodyParser.json());
-app.use(cors());
-const database={
-	users:[
-	{
-		 id:'123',
-	  name:'john',
-	  email:'john@gmail.com',
-	  password:'cookies',
-	  
-	  entries:0,
-	  joined:new Date()
+const express = require('express');
+const app = express();
+var bodyParser = require('body-parser');
+var cors = require('cors');
+const knex=require('knex');
 
+const db=knex({
+  client: 'pg',
+  connection: {
+    host : '127.0.0.1',
+    user : 'postgres',
+    password : 'test',
+    database : 'postgres'
+  }
+});
+const database = {
 
-	},
-	{
-		 id:'124',
-	  name:'katie',
-	  email:'katie@gmail.com',
-	  password:'chocolates',
-	  
-	  entries:0,
-	  joined:new Date()
-	}
-
-	 
-	],
-	login:[{
-		id:'987',
-		hash:'',
-		email:'jane@gmail.com'
-	}]
-
-	
-
+  users: [{
+    id: '123',
+    name: 'Andrei',
+    email: 'john@gmail.com',
+    entries: 0,
+    joined: new Date()
+  }],
+  secrets: {
+    users_id: '123',
+    hash: 'wghhh'
+  }
 }
 
-app.get('/',(req,res)=>{
-	res.send(database.users);
-})
-app.post('/signin',(req,res)=>{
-	bcrypt.compare("daffodils",'$2a$10$QdBIC0ij9ZU803yhRGTpa.H5cIKXL0gQC.CedSIPCUOaj6pL0SK/m', function(err, res) {
-		console.log('first guess',res);
-    // res == true
-});
-bcrypt.compare("veggies", '$2a$10$QdBIC0ij9ZU803yhRGTpa.H5cIKXL0gQC.CedSIPCUOaj6pL0SK/m', function(err, res) {
-	console.log('second guess',res);
-    // res = false
-});
-	if(req.body.email===database.users[0].email && req.body.password===database.users[0].password){
-		res.json(database.users[0])
+app.use(cors());
+app.use(bodyParser.json());
+app.get('/', (req, res) => res.send('Hello World!'))
 
-	}
-	else{
-		res.status(400).json('error logging in');
-	}
+app.post('/signin', (req, res) => {
+  var a = JSON.parse(req.body);
+  if (a.username === database.users[0].email && a.password === database.secrets.hash) {
+    res.send('signed in');
+  } else {
+    res.json('access denied');
+  }
 })
-app.post('/register',(req,res)=>{
-	const {email,password,name}=req.body;
-	bcrypt.hash(password, null, null, function(err, hash) {
-	console.log(hash);
-    // Store hash in your password DB.
-});
-	database.users.push({
-		 id:'125',
-	  name:name,
-	  email:email,
-	  password:password,
-	  entries:0,
-	  joined:new Date()
 
-	})
-	res.json(database.users[database.users.length-1]);
-})
-app.get('/profile/:id',(req,res)=>{
-	const {id}=req.params;
-	let found=false;
-	database.users.forEach(user=>{
-		if(user.id==id){
-			found=true;
-			res.json(user);
-		}
-		
-	})
-	if(!found){
-		res.status(400).json('user not found');
-	}
-})
-app.put('/image',(req,res)=>{
-	const {id}=req.body;
-	let found=false;
-	database.users.forEach(user=>{
-		if(user.id==id){
-			found=true;
-			user.entries++
-			res.json(user.entries);
-		}
-		
-	})
-	if(!found){
-		res.status(400).json(' not found');
-	}
-     
+app.post('/findface', (req, res) => {
+  database.users.forEach(user => {
+    if (user.email === req.body.email) {
+      user.entries++
+      res.json(user)
+    }
+  });
+  res.json('nope')
 })
 
 
+app.post('/register', (req, res) => { 
 
-app.listen(3000,()=>{
-	console.log('The app is running smoothly on port 3000')
+   const {email,name,password}=req.body;
+   db("users").insert({
+    email:email,
+    name:name,
+    joined:new Date()
+   }).then(response=>{
+     res.json(database.users[database.users.length - 1])
+
+   })
+
+
+ 
 })
+
+app.get('/profile/:userId', (req, res) => {
+  database.users.forEach(user => {
+    if (user.id === req.params.userId) {
+      return res.json(user);
+    }
+  })
+  // res.json('no user')
+
+})
+
+app.listen(3000, () => console.log('Example app listening on port 3000!'))
